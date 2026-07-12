@@ -716,55 +716,14 @@ const handleImageUpload = (response) => {
   }
 }
 
-// 处理编辑器中的图片上传
-const normalizeImageBlob = async (blob) => {
-  if (!blob) return null
-
-  let normalizedBlob = blob
-  if (!(blob instanceof Blob) && blob.blob instanceof Blob) {
-    normalizedBlob = blob.blob
-  }
-
-  const mimeType = normalizedBlob.type || blob.type || 'image/png'
-  const extension = mimeType === 'image/jpeg' ? 'jpg' : (mimeType.split('/')?.[1] || 'png')
-  const timestamp = Date.now()
-  const fileName = blob.name || `image_${timestamp}.${extension}`
-
-  let finalBlob = normalizedBlob
-  if (!finalBlob.size || finalBlob.size <= 0) {
-    const buffer = await normalizedBlob.arrayBuffer()
-    if (!buffer.byteLength) {
-      return null
-    }
-    finalBlob = new Blob([buffer], { type: mimeType })
-  }
-
-  const file = new File([finalBlob], fileName, {
-    type: mimeType,
-    lastModified: Date.now()
-  })
-
-  return { file, fileName }
-}
-
+// 处理编辑器中的图片上传（粘贴/拖拽触发）
 const handleEditorImageUpload = async (blob, callback) => {
   try {
-    const normalized = await normalizeImageBlob(blob)
-    if (!normalized) {
-      callback('', '图片上传失败')
-      ElMessage.error('图片文件为空，请重新复制或拖拽上传')
-      return
-    }
-
-    const { file, fileName } = normalized
-    if (file.size > 10 * 1024 * 1024) {
-      callback('', '图片上传失败')
-      ElMessage.error('图片大小不能超过 10MB')
-      return
-    }
+    // Toast UI Editor addImageBlobHook 传入的 blob，直接发送
+    const file = blob instanceof File ? blob : new File([blob], `image_${Date.now()}.png`, { type: blob.type || 'image/png' })
 
     const formData = new FormData()
-    formData.append('file', file, fileName)
+    formData.append('file', file, file.name || 'image.png')
 
     const response = await fetch(uploadUrl.value, {
       method: 'POST',
@@ -775,15 +734,14 @@ const handleEditorImageUpload = async (blob, callback) => {
     const result = await response.json()
 
     if (result.code === '200') {
-      const altText = fileName.replace(/\.[^/.]+$/, '')
-      callback(result.data, altText)
+      callback(result.data, file.name)
       ElMessage.success('图片上传成功')
     } else {
       callback('', '图片上传失败')
       ElMessage.error(result.msg || result.message || '图片上传失败')
     }
   } catch (error) {
-    console.error('paste image upload error', error)
+    console.error('图片上传失败:', error)
     callback('', '图片上传失败')
     ElMessage.error('网络错误，图片上传失败')
   }
