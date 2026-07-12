@@ -288,28 +288,18 @@ const editorConfig = {
 
 // 配置图片上传
 editorConfig.MENU_CONF['uploadImage'] = {
-  server: `${getApiBaseURL()}/common/upload`,
-  headers: {
-    authentication: getToken()
-  },
-  fieldName: 'file',
-  maxFileSize: 2 * 1024 * 1024, // 2MB
-  onBeforeUpload(file) {
-    const isImage = file.type.startsWith('image/')
-    const isLt2M = file.size / 1024 / 1024 < 2
-
-    if (!isImage) {
-      ElMessage.error('只能上传图片文件!')
-      return false
+  async customUpload(file, insertFn) {
+    try {
+      const res = await adminApi.uploadImage(file, file.name)
+      if (res.code === '200') {
+        insertFn(res.data, file.name, res.data)
+        ElMessage.success('图片上传成功')
+      } else {
+        ElMessage.error('图片上传失败')
+      }
+    } catch (e) {
+      ElMessage.error('图片上传失败')
     }
-    if (!isLt2M) {
-      ElMessage.error('图片大小不能超过 2MB!')
-      return false
-    }
-    return true
-  },
-  onSuccess(file, res) {
-    ElMessage.success('图片上传成功')
   }
 }
 
