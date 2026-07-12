@@ -15,6 +15,7 @@ import top.hazenix.result.Result;
 import top.hazenix.utils.AliOssUtil;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/common")
@@ -26,13 +27,25 @@ public class WebController {
 
     @PostMapping("/upload")
     public Result upload(MultipartFile file) {
-        log.info("文件上传：{}",file.getOriginalFilename());
-        //将文件交给OSS存储管理
+        if (file == null || file.isEmpty() || file.getSize() <= 0) {
+            log.warn("上传失败：收到空文件");
+            throw new FailUploadException(ErrorCode.B00004, "上传文件为空");
+        }
+
+        String originalFilename = Objects.requireNonNullElse(file.getOriginalFilename(), "").trim();
+        if (originalFilename.isEmpty() || !originalFilename.contains(".")) {
+            log.warn("上传失败：文件名非法，filename={}", originalFilename);
+            throw new FailUploadException(ErrorCode.B00004, "文件名不合法");
+        }
+
+        log.info("文件上传：filename={}, size={} bytes, contentType={}",
+                originalFilename, file.getSize(), file.getContentType());
+
         String url;
         try {
-            url = aliOssUtil.upload(file.getBytes(),file.getOriginalFilename());
+            url = aliOssUtil.upload(file.getBytes(), originalFilename);
         } catch (IOException e) {
-            log.error("错误信息:{}", e);
+            log.error("读取上传文件失败，filename={}", originalFilename, e);
             throw new FailUploadException(ErrorCode.B00004, MessageConstant.UPLOAD_FAILED);
         }
         return Result.success(url);
