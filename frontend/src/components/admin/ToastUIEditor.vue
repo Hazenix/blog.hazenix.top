@@ -441,6 +441,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } 
 import { ElMessage } from 'element-plus'
 import { Upload, Folder, EditPen, Edit, FullScreen, InfoFilled, Setting, Search, Close, FolderOpened, Promotion } from '@element-plus/icons-vue'
 import { getToken } from '@/utils/auth'
+import { getApiBaseURL } from '@/utils/apiConfig'
 import { adminApi } from '@/api/admin'
 import Editor from '@toast-ui/editor'
 import '@toast-ui/editor/dist/toastui-editor.css'
@@ -527,7 +528,7 @@ const createTagRules = {
 }
 
 // 上传配置
-const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL}/common/upload`)
+const uploadUrl = computed(() => `${getApiBaseURL()}/common/upload`)
 const uploadHeaders = computed(() => ({
   'authentication': getToken()
 }))

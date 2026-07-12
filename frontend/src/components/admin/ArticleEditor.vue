@@ -246,6 +246,7 @@ import { ElMessage } from 'element-plus'
 import { Upload, EditPen, Operation, Edit, Setting, Search, InfoFilled, Close, FolderOpened, Promotion } from '@element-plus/icons-vue'
 import { adminApi } from '@/api/admin'
 import { getToken } from '@/utils/auth'
+import { getApiBaseURL } from '@/utils/apiConfig'
 import MarkdownRenderer from '@/components/article/MarkdownRenderer.vue'
 import '@wangeditor/editor/dist/css/style.css' //引入css
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -287,7 +288,7 @@ const editorConfig = {
 
 // 配置图片上传
 editorConfig.MENU_CONF['uploadImage'] = {
-  server: `${import.meta.env.VITE_API_BASE_URL}/common/upload`,
+  server: `${getApiBaseURL()}/common/upload`,
   headers: {
     authentication: getToken()
   },
@@ -329,7 +330,7 @@ const form = reactive({
 })
 
 // 上传配置
-const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL}/common/upload`)
+const uploadUrl = computed(() => `${getApiBaseURL()}/common/upload`)
 const uploadHeaders = computed(() => ({
   'authentication': getToken()
 }))
