@@ -290,14 +290,25 @@ const editorConfig = {
 editorConfig.MENU_CONF['uploadImage'] = {
   async customUpload(file, insertFn) {
     try {
-      const res = await adminApi.uploadImage(file, file.name)
+      // 将 file 转为 ArrayBuffer 再创建新 Blob，确保数据完整
+      const buf = await file.arrayBuffer()
+      const blob = new Blob([buf], { type: file.type || 'image/png' })
+      const formData = new FormData()
+      formData.append('file', blob, file.name || 'image.png')
+      const resp = await fetch(`${getApiBaseURL()}/common/upload`, {
+        method: 'POST',
+        headers: { authentication: getToken() || '' },
+        body: formData
+      })
+      const res = await resp.json()
       if (res.code === '200') {
-        insertFn(res.data, file.name, res.data)
+        insertFn(res.data, file.name || '', res.data)
         ElMessage.success('图片上传成功')
       } else {
         ElMessage.error('图片上传失败')
       }
     } catch (e) {
+      console.error('upload error', e)
       ElMessage.error('图片上传失败')
     }
   }
