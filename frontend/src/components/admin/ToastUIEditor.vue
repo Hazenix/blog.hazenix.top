@@ -441,7 +441,6 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick, watch } 
 import { ElMessage } from 'element-plus'
 import { Upload, Folder, EditPen, Edit, FullScreen, InfoFilled, Setting, Search, Close, FolderOpened, Promotion } from '@element-plus/icons-vue'
 import { getToken } from '@/utils/auth'
-import { getApiBaseURL } from '@/utils/apiConfig'
 import { adminApi } from '@/api/admin'
 import Editor from '@toast-ui/editor'
 import '@toast-ui/editor/dist/toastui-editor.css'
@@ -528,7 +527,7 @@ const createTagRules = {
 }
 
 // 上传配置
-const uploadUrl = computed(() => `${getApiBaseURL()}/common/upload`)
+const uploadUrl = computed(() => import.meta.env.PROD ? '/api/common/upload' : 'http://localhost:9090/common/upload')
 const uploadHeaders = computed(() => ({
   'authentication': getToken()
 }))
@@ -718,24 +717,54 @@ const handleImageUpload = (response) => {
 }
 
 // 处理编辑器中的图片上传
+const normalizeImageBlob = async (blob) => {
+  if (!blob) return null
+
+  let normalizedBlob = blob
+  if (!(blob instanceof Blob) && blob.blob instanceof Blob) {
+    normalizedBlob = blob.blob
+  }
+
+  const mimeType = normalizedBlob.type || blob.type || 'image/png'
+  const extension = mimeType === 'image/jpeg' ? 'jpg' : (mimeType.split('/')?.[1] || 'png')
+  const timestamp = Date.now()
+  const fileName = blob.name || `image_${timestamp}.${extension}`
+
+  let finalBlob = normalizedBlob
+  if (!finalBlob.size || finalBlob.size <= 0) {
+    const buffer = await normalizedBlob.arrayBuffer()
+    if (!buffer.byteLength) {
+      return null
+    }
+    finalBlob = new Blob([buffer], { type: mimeType })
+  }
+
+  const file = new File([finalBlob], fileName, {
+    type: mimeType,
+    lastModified: Date.now()
+  })
+
+  return { file, fileName }
+}
+
 const handleEditorImageUpload = async (blob, callback) => {
   try {
-    if (!blob || !blob.size || blob.size <= 0) {
+    const normalized = await normalizeImageBlob(blob)
+    if (!normalized) {
       callback('', '图片上传失败')
-      ElMessage.error('图片文件为空，请重新选择')
+      ElMessage.error('图片文件为空，请重新复制或拖拽上传')
       return
     }
-    if (blob.size > 10 * 1024 * 1024) {
+
+    const { file, fileName } = normalized
+    if (file.size > 10 * 1024 * 1024) {
       callback('', '图片上传失败')
       ElMessage.error('图片大小不能超过 10MB')
       return
     }
 
     const formData = new FormData()
-    const timestamp = Date.now()
-    const extension = blob.type === 'image/jpeg' ? 'jpg' : (blob.type?.split('/')?.[1] || 'png')
-    const fileName = `image_${timestamp}.${extension}`
-    formData.append('file', blob, fileName)
+    formData.append('file', file, fileName)
 
     const response = await fetch(uploadUrl.value, {
       method: 'POST',
@@ -754,6 +783,7 @@ const handleEditorImageUpload = async (blob, callback) => {
       ElMessage.error(result.msg || result.message || '图片上传失败')
     }
   } catch (error) {
+    console.error('paste image upload error', error)
     callback('', '图片上传失败')
     ElMessage.error('网络错误，图片上传失败')
   }
