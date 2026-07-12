@@ -290,11 +290,22 @@ const editorConfig = {
 editorConfig.MENU_CONF['uploadImage'] = {
   async customUpload(file, insertFn) {
     try {
-      // 将 file 转为 ArrayBuffer 再创建新 Blob，确保数据完整
-      const buf = await file.arrayBuffer()
-      const blob = new Blob([buf], { type: file.type || 'image/png' })
+      const maxSize = 10 * 1024 * 1024
+      if (!file?.type?.startsWith('image/')) {
+        ElMessage.error('只能上传图片文件')
+        return
+      }
+      if (!file.size || file.size <= 0) {
+        ElMessage.error('图片文件为空，请重新选择')
+        return
+      }
+      if (file.size > maxSize) {
+        ElMessage.error('图片大小不能超过 10MB')
+        return
+      }
+
       const formData = new FormData()
-      formData.append('file', blob, file.name || 'image.png')
+      formData.append('file', file, file.name || 'image.png')
       const resp = await fetch(`${getApiBaseURL()}/common/upload`, {
         method: 'POST',
         headers: { authentication: getToken() || '' },
@@ -305,7 +316,7 @@ editorConfig.MENU_CONF['uploadImage'] = {
         insertFn(res.data, file.name || '', res.data)
         ElMessage.success('图片上传成功')
       } else {
-        ElMessage.error('图片上传失败')
+        ElMessage.error(res.msg || '图片上传失败')
       }
     } catch (e) {
       console.error('upload error', e)
@@ -374,14 +385,18 @@ const initForm = () => {
 // 图片上传前验证
 const beforeImageUpload = (file) => {
   const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
+  const isLt10M = file.size / 1024 / 1024 < 10
 
   if (!isImage) {
     ElMessage.error('只能上传图片文件!')
     return false
   }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
+  if (!file.size || file.size <= 0) {
+    ElMessage.error('图片文件为空，请重新选择!')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('图片大小不能超过 10MB!')
     return false
   }
   return true
