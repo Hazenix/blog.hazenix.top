@@ -351,7 +351,14 @@ const handleEdit = (category) => {
 const handleToggleStatus = async (category) => {
   try {
     const newStatus = category.status === null ? 1 : (category.status === 0 ? 1 : 0)
-    await adminApi.updateCategory(category.id, { status: newStatus })
+    // 后端 PUT /admin/categories/{id} 使用完整 CategoryDTO 校验，name 不能为空。
+    // 切换状态时也传完整分类信息，避免只传 status 触发 400。
+    await adminApi.updateCategory(category.id, {
+      name: category.name,
+      sort: category.sort || 0,
+      slug: category.slug || '',
+      status: newStatus
+    })
     ElMessage.success(`${newStatus === 0 ? '启用' : '禁用'}成功`)
     loadCategories()
   } catch (error) {
