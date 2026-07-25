@@ -28,78 +28,20 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCategoryList } from '@/api/category'
-import { articleApi } from '@/api/article'
 import { setSEO } from '@/utils/seo'
 
 const router = useRouter()
 const categories = ref([])
 const loading = ref(false)
 
-// 重新计算分类的文章数量（只统计已发布的文章，排除id=1）
-const recalculateCategoryCounts = async (categoryList) => {
-  try {
-    // 获取所有文章列表
-    const response = await articleApi.getArticleList()
-    
-    if (response && response.code === '200' && response.data) {
-      // 处理不同的响应格式
-      let articles = []
-      if (Array.isArray(response.data)) {
-        articles = response.data
-      } else if (response.data.list && Array.isArray(response.data.list)) {
-        articles = response.data.list
-      } else if (Array.isArray(response.data.records)) {
-        articles = response.data.records
-      } else {
-        articles = []
-      }
-      
-      // 过滤文章：只保留已发布的文章（status=0），排除留言板文章（id=1）
-      const publishedArticles = articles.filter(article => {
-        // 排除留言板文章
-        if (article.id === 1 || article.id === '1') {
-          return false
-        }
-        // 只显示已发布的文章（status=0）
-        if (article.status !== 0 && article.status !== '0') {
-          return false
-        }
-        return true
-      })
-      
-      // 统计每个分类的文章数量
-      const categoryCountMap = new Map()
-      publishedArticles.forEach(article => {
-        const categoryId = article.categoryId || article.category?.id
-        if (categoryId) {
-          categoryCountMap.set(categoryId, (categoryCountMap.get(categoryId) || 0) + 1)
-        }
-      })
-      
-      // 更新分类列表中的文章数量
-      return categoryList.map(category => ({
-        ...category,
-        articleCount: categoryCountMap.get(category.id) || 0
-      })).filter(category => category.articleCount > 0) // 只显示有文章数量的分类
-    }
-    
-    return categoryList
-  } catch (error) {
-    // console.error('重新计算分类数量失败:', error)
-    return categoryList
-  }
-}
-
 const loadCategories = async () => {
   loading.value = true
   try {
     const res = await getCategoryList()
-    let categoryList = res.data || []
-    
-    // 重新计算分类的文章数量
-    categoryList = await recalculateCategoryCounts(categoryList)
-    
-    categories.value = categoryList
+    const categoryList = res.data || []
+
+    // 分类接口已经返回 articleCount，避免依赖文章列表 VO 的 categoryId 字段重复统计。
+    categories.value = categoryList.filter(category => (category.articleCount || 0) > 0)
   } catch (error) {
     // console.error('Failed to load categories:', error)
     categories.value = []
@@ -109,7 +51,7 @@ const loadCategories = async () => {
 }
 
 const goToCategory = (category) => {
-  router.push(`/articles?category=${category.id}`)
+  router.push(`/articles?categoryId=${category.id}`)
 }
 
 onMounted(() => {

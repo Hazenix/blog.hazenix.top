@@ -172,7 +172,6 @@ import { useRouter, useRoute } from 'vue-router'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import { Search, User, ArrowDown, InfoFilled, DataAnalysis, Collection, Close } from '@element-plus/icons-vue'
 import { getCategoryList } from '@/api/category'
-import { getArticleList } from '@/api/article'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -266,57 +265,11 @@ const handleCategoryCommand = (categoryId) => {
 const loadCategories = async () => {
   loadingCategories.value = true
   try {
-    // 获取分类列表
     const res = await getCategoryList()
     const allCategories = res.data || []
-    
-    // 获取所有文章列表
-    let publishedArticles = []
-    try {
-      const articlesRes = await getArticleList()
-      // 处理不同的响应格式
-      if (articlesRes && articlesRes.data) {
-        if (Array.isArray(articlesRes.data)) {
-          publishedArticles = articlesRes.data
-        } else if (articlesRes.data.list && Array.isArray(articlesRes.data.list)) {
-          publishedArticles = articlesRes.data.list
-        } else if (Array.isArray(articlesRes.data.records)) {
-          publishedArticles = articlesRes.data.records
-        }
-      }
-    } catch (articleError) {
-      // console.warn('Failed to load articles for counting:', articleError)
-    }
-    
-    // 过滤文章：只保留已发布的文章（status=0），排除留言板文章（id=1）
-    const filteredArticles = publishedArticles.filter(article => {
-      // 排除留言板文章
-      if (article.id === 1 || article.id === '1') {
-        return false
-      }
-      // 只显示已发布的文章（status=0）
-      if (article.status !== 0 && article.status !== '0') {
-        return false
-      }
-      return true
-    })
-    
-    // 按分类统计已发布文章的数量
-    const categoryCountMap = new Map()
-    filteredArticles.forEach(article => {
-      const categoryId = article.categoryId || article.category?.id
-      if (categoryId) {
-        categoryCountMap.set(categoryId, (categoryCountMap.get(categoryId) || 0) + 1)
-      }
-    })
-    
-    // 更新分类的文章数量，只显示有已发布文章的分类
-    const categoriesWithCount = allCategories.map(category => ({
-      ...category,
-      articleCount: categoryCountMap.get(category.id) || 0
-    })).filter(category => category.articleCount > 0)
-    
-    categories.value = categoriesWithCount
+
+    // 分类接口已经返回 articleCount，避免依赖文章列表 VO 的 categoryId 字段重复统计。
+    categories.value = allCategories.filter(category => (category.articleCount || 0) > 0)
   } catch (error) {
     // console.error('Failed to load categories:', error)
     categories.value = []

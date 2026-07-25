@@ -65,9 +65,11 @@
         from
         category c
         left join
-        article a on c.id = a.category_id
+        article a on c.id = a.category_id and a.status = 0 and a.id != 1
+        where (c.type is null or c.type != 1)
         group by
-        c.id
+        c.id,
+        c.name
         order by
         c.sort desc
     </select>

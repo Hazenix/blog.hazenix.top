@@ -98,7 +98,7 @@ public class ArticleController {
      * @return
      */
     @PostMapping
-    @CacheEvict(cacheNames = "articlesCache", allEntries = true)
+    @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result addArticle(@Valid @RequestBody ArticleDTO articleDTO){
         log.info("新增文章：{}",articleDTO);
         articleService.addArticle(articleDTO);
@@ -113,7 +113,7 @@ public class ArticleController {
      * @return
      */
     @PutMapping("/{id}")
-    @CacheEvict(cacheNames = "articlesCache", key = "#id")
+    @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result updateArticle(@PathVariable Long id, @Valid @RequestBody ArticleDTO articleDTO){
         log.info("更新文章：{}",id);
         articleService.updateArticle(id,articleDTO);
@@ -127,7 +127,7 @@ public class ArticleController {
      * @return
      */
     @DeleteMapping("/{id}")
-    @CacheEvict(cacheNames = "articlesCache", allEntries = true)
+    @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result deleteArticle(@PathVariable Long id){
         log.info("删除文章：{}",id);
         articleService.deleteArticle(id);
@@ -141,7 +141,7 @@ public class ArticleController {
      * @return
      */
     @DeleteMapping("/batch")
-    @CacheEvict(cacheNames = "articlesCache", allEntries = true)
+    @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result deleteArticles(@Valid @RequestBody DeleteArticleRequestDTO deleteArticleRequestDTO){
         List<Long> ids = deleteArticleRequestDTO.getIds();
         log.info("批量删除文章：{}",ids);
@@ -159,7 +159,7 @@ public class ArticleController {
      * @return
      */
     @PutMapping("/{id}/{status}")
-    @CacheEvict(cacheNames = "articlesCache", allEntries = true)
+    @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result updateArticleStatus(@PathVariable Long id,@PathVariable Integer status){
         log.info("更新文章状态：{}",id);
         articleService.updateArticleStatus(id,status);
