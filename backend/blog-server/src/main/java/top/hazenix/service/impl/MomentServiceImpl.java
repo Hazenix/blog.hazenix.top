@@ -33,7 +33,10 @@ import top.hazenix.vo.MomentVO;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -80,6 +83,7 @@ public class MomentServiceImpl implements MomentService {
     @Override
     @Transactional
     public void updateMoment(Long id, MomentDTO dto) {
+        Integer categoryId = momentCategoryId();
         Article a = Article.builder()
                 .id(id)
                 .title(dto.getTitle())
@@ -88,7 +92,9 @@ public class MomentServiceImpl implements MomentService {
                 .status(dto.getStatus())
                 .updateTime(LocalDateTime.now())
                 .build();
-        articleMapper.update(a);
+        if (articleMapper.updateMoment(a, categoryId) != 1) {
+            throw momentNotFound();
+        }
         articleTagsMapper.deleteByArticleIds(java.util.List.of(id));
         saveTags(id, dto.getTagIds());
     }
@@ -96,17 +102,27 @@ public class MomentServiceImpl implements MomentService {
     @Override
     @Transactional
     public void deleteMoments(DeleteMomentsDTO dto) {
+        Integer categoryId = momentCategoryId();
+        Set<Long> requestedIds = new HashSet<>(dto.getIds());
+        List<Article> lockedArticles = articleMapper.selectArticlesForUpdate(dto.getIds());
+        boolean allRowsAreMoments = lockedArticles.size() == requestedIds.size()
+                && lockedArticles.stream()
+                .allMatch(article -> Objects.equals(article.getCategoryId(), categoryId));
+        if (!allRowsAreMoments) {
+            throw momentNotFound();
+        }
         articleTagsMapper.deleteByArticleIds(dto.getIds());
         articleMapper.deleteByIds(dto.getIds());
     }
 
     @Override
+    @Transactional
     public MomentVO getById(Long id, String clientIp) {
-        Article a = articleMapper.getById(id);
-        if (a == null) {
-            throw new BussinessException(ErrorCode.A04001, MessageConstant.NOT_FOUND);
+        Integer categoryId = momentCategoryId();
+        if (articleMapper.incrementPublishedMomentViewCount(id, categoryId, 0) != 1) {
+            throw momentNotFound();
         }
-        articleMapper.incrementViewCount(id);
+        Article a = articleMapper.getById(id);
         return buildVO(a, clientIp);
     }
 
@@ -115,7 +131,7 @@ public class MomentServiceImpl implements MomentService {
         // 必须在 startPage 之前解析分类 ID，否则 PageHelper 会拦截 getMomentCategoryId 的 limit 1 查询
         Integer catId = momentCategoryId();
         PageHelper.startPage(page, pageSize);
-        Page<MomentVO> res = articleMapper.pageMoments(null, 0, catId);
+        Page<MomentVO> res = articleMapper.pageMoments(null, 0, catId, tagName);
         List<MomentVO> list = res.getResult();
         list.forEach(vo -> fillVO(vo, clientIp));
         return new PageResult(res.getTotal(), list);
@@ -125,23 +141,30 @@ public class MomentServiceImpl implements MomentService {
     public PageResult pageQueryAdmin(Integer page, Integer pageSize, String keyword) {
         Integer catId = momentCategoryId();
         PageHelper.startPage(page, pageSize);
-        Page<MomentVO> res = articleMapper.pageMoments(keyword, null, catId);
+        Page<MomentVO> res = articleMapper.pageMoments(keyword, null, catId, null);
         List<MomentVO> list = res.getResult();
         list.forEach(vo -> fillVO(vo, null));
         return new PageResult(res.getTotal(), list);
     }
 
     @Override
+    @Transactional
     public void likeMoment(Long id, String clientIp) {
+        requireMomentArticle(id, true);
         if (momentLikeMapper.getByArticleIdAndIp(id, clientIp) != null) {
-            throw new BussinessException(ErrorCode.A03003, MessageConstant.ALREADY_LIKED);
+            throw alreadyLiked();
         }
-        momentLikeMapper.insert(MomentLike.builder()
+        int inserted = momentLikeMapper.insertIfAbsent(MomentLike.builder()
                 .articleId(id)
                 .ip(clientIp)
                 .createTime(LocalDateTime.now())
                 .build());
-        articleMapper.incrementLikeCount(id);
+        if (inserted == 0) {
+            throw alreadyLiked();
+        }
+        if (articleMapper.incrementPublishedMomentLikeCount(id, momentCategoryId(), 0) != 1) {
+            throw momentNotFound();
+        }
     }
 
     @Override
@@ -167,7 +190,7 @@ public class MomentServiceImpl implements MomentService {
     }
 
     private String serializeImages(List<String> urls) {
-        if (urls == null || urls.isEmpty()) return null;
+        if (urls == null) return null;
         try {
             return objectMapper.writeValueAsString(urls);
         } catch (JsonProcessingException e) {
@@ -206,5 +229,28 @@ public class MomentServiceImpl implements MomentService {
         vo.setTitle(MomentTitleUtil.fallbackTitle(vo.getTitle(), vo.getContent()));
         vo.setTags(articleTagsMapper.getTagNamesByArticleId(vo.getId()));
         vo.setLiked(clientIp != null && momentLikeMapper.getByArticleIdAndIp(vo.getId(), clientIp) != null);
+    }
+
+    private Article requireMomentArticle(Long id, boolean publishedOnly) {
+        return requireMomentArticle(id, publishedOnly, momentCategoryId());
+    }
+
+    private Article requireMomentArticle(Long id, boolean publishedOnly, Integer categoryId) {
+        Article article = articleMapper.getById(id);
+        boolean isMoment = article != null && Objects.equals(article.getCategoryId(), categoryId);
+        boolean isPublished = article != null && Objects.equals(article.getStatus(), 0);
+        if (!isMoment || (publishedOnly && !isPublished)) {
+            // 对外统一返回不存在，既阻止跨分类操作，也不泄露草稿是否存在。
+            throw momentNotFound();
+        }
+        return article;
+    }
+
+    private BussinessException momentNotFound() {
+        return new BussinessException(ErrorCode.A02001, MessageConstant.NOT_FOUND);
+    }
+
+    private BussinessException alreadyLiked() {
+        return new BussinessException(ErrorCode.A03003, MessageConstant.ALREADY_LIKED);
     }
 }

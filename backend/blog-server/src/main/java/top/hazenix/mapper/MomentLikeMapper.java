@@ -6,6 +6,6 @@ import top.hazenix.entity.MomentLike;
 
 @Mapper
 public interface MomentLikeMapper {
-    void insert(MomentLike like);
+    int insertIfAbsent(MomentLike like);
     MomentLike getByArticleIdAndIp(@Param("articleId") Long articleId, @Param("ip") String ip);
 }

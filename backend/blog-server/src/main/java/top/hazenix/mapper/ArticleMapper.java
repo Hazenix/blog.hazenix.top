@@ -151,14 +151,41 @@ public interface ArticleMapper {
     void incrementViewCount(Long id);
 
     /**
+     * 更新手记正文信息，SQL 自身限定手记分类，返回实际更新行数。
+     */
+    int updateMoment(@Param("article") Article article,
+                     @Param("momentCategoryId") Integer momentCategoryId);
+
+    /**
+     * 锁定待批量删除的文章，避免校验分类后被并发修改。
+     */
+    List<Article> selectArticlesForUpdate(@Param("ids") List<Long> ids);
+
+    /**
+     * 仅对已发布手记增加浏览数，返回实际更新行数。
+     */
+    int incrementPublishedMomentViewCount(@Param("id") Long id,
+                                          @Param("momentCategoryId") Integer momentCategoryId,
+                                          @Param("publishedStatus") Integer publishedStatus);
+
+    /**
+     * 仅对已发布手记增加点赞数，返回实际更新行数。
+     */
+    int incrementPublishedMomentLikeCount(@Param("id") Long id,
+                                          @Param("momentCategoryId") Integer momentCategoryId,
+                                          @Param("publishedStatus") Integer publishedStatus);
+
+    /**
      * 分页查询手记列表（手记存储在文章表的手记分类下）
      * @param keyword 关键词（标题或内容模糊匹配）
      * @param status 状态过滤
      * @param momentCategoryId 手记分类ID
+     * @param tagName 标签名过滤（仅前台手记列表使用）
      * @return 手记VO分页结果
      */
     com.github.pagehelper.Page<top.hazenix.vo.MomentVO> pageMoments(
             @org.apache.ibatis.annotations.Param("keyword") String keyword,
             @org.apache.ibatis.annotations.Param("status") Integer status,
-            @org.apache.ibatis.annotations.Param("momentCategoryId") Integer momentCategoryId);
+            @org.apache.ibatis.annotations.Param("momentCategoryId") Integer momentCategoryId,
+            @org.apache.ibatis.annotations.Param("tagName") String tagName);
 }

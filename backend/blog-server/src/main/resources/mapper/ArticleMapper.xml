@@ -59,6 +59,30 @@
     <update id="incrementViewCount">
         update article set view_count = coalesce(view_count,0) + 1 where id = #{id}
     </update>
+    <update id="updateMoment">
+        update article
+        set title = #{article.title},
+            content = #{article.content},
+            images = #{article.images},
+            status = #{article.status},
+            update_time = #{article.updateTime}
+        where id = #{article.id}
+          and category_id = #{momentCategoryId}
+    </update>
+    <update id="incrementPublishedMomentViewCount">
+        update article
+        set view_count = coalesce(view_count, 0) + 1
+        where id = #{id}
+          and category_id = #{momentCategoryId}
+          and status = #{publishedStatus}
+    </update>
+    <update id="incrementPublishedMomentLikeCount">
+        update article
+        set like_count = coalesce(like_count, 0) + 1
+        where id = #{id}
+          and category_id = #{momentCategoryId}
+          and status = #{publishedStatus}
+    </update>
     <delete id="deleteByIds">
         delete from article where id in
         <foreach item="id" collection="ids" separator="," open="(" close=")">
@@ -96,6 +120,16 @@
     </select>
     <select id="getById" resultType="top.hazenix.entity.Article">
         select * from article where id = #{id}
+    </select>
+    <select id="selectArticlesForUpdate" resultType="top.hazenix.entity.Article">
+        select id, category_id
+        from article
+        where id in
+        <foreach item="id" collection="ids" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+        order by id
+        for update
     </select>
     <select id="countByIds" resultType="java.lang.Integer">
         select count(id) from article where category_id in
@@ -167,6 +201,13 @@
         </if>
         <if test="status != null">
             and status = #{status}
+        </if>
+        <if test="tagName != null and tagName != ''">
+            and id in (
+                select article_id
+                from article_tags
+                where tags_name = #{tagName}
+            )
         </if>
         order by coalesce(is_top, 0) desc, create_time desc
     </select>
