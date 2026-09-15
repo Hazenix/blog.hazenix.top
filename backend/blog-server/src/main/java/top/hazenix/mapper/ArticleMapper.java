@@ -33,6 +33,9 @@ public interface ArticleMapper {
      */
     Integer count();
 
+    /** 汇总已发布文章和手记的正文字符数，排除空白字符。 */
+    Long countPublishedWords();
+
     /**
      * 统计某一分类id集合下的文章数量
      * @param ids

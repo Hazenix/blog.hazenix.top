@@ -14,6 +14,9 @@ import lombok.NoArgsConstructor;
 public class StatisticVO {
     @ApiModelProperty(value = "文章总数", example = "100")
     private Integer totalArticles;
+
+    @ApiModelProperty(value = "已发布文章和手记总字数（不含空白，包含Markdown标记）", example = "128640")
+    private Long totalPublishedWords;
     
     @ApiModelProperty(value = "文章种类数", example = "10")
     private Integer totalCategories;

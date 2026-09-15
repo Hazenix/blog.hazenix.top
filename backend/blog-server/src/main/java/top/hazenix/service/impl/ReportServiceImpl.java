@@ -38,6 +38,7 @@ public class ReportServiceImpl implements ReportService {
 
         return StatisticVO.builder()
                 .totalArticles(totalArticles)
+                .totalPublishedWords(articleMapper.countPublishedWords())
                 .totalCategories(totalCategories)
                 .totalTags(totalTags)
                 .totalComments(totalComments)

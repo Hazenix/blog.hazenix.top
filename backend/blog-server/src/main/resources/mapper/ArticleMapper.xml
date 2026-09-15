@@ -96,6 +96,12 @@
     <select id="count" resultType="java.lang.Integer">
         select count(*) from article
     </select>
+    <!-- 文章与手记共用 article 表；只过滤发布状态，不过滤分类。 -->
+    <select id="countPublishedWords" resultType="java.lang.Long">
+        select coalesce(sum(char_length(regexp_replace(coalesce(content, ''), '[[:space:]]', '', 'g'))), 0)
+        from article
+        where status = 0
+    </select>
     <select id="getRecentArticles" resultType="top.hazenix.vo.ArticleShortVO">
         select id,title,status,create_time,cover_image from article
         where category_id not in (select id from category where type = 1)

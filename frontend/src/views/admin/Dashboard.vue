@@ -1,7 +1,12 @@
 <template>
   <div class="space-y-6">
     <!-- 统计卡片 -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">已发布总字数</p>
+        <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words">{{ (stats.totalPublishedWords ?? 0).toLocaleString('zh-CN') }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">包含文章和手记</p>
+      </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div class="flex items-center">
           <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
@@ -160,6 +165,7 @@ import { adminApi } from '@/api/admin'
 // 统计数据
 const stats = ref({
   totalArticles: 0,
+  totalPublishedWords: 0,
   totalCategories: 0,
   totalTags: 0,
   totalComments: 0
