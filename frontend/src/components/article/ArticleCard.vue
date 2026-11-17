@@ -2,9 +2,8 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
     <div class="flex items-start justify-between mb-4">
       <div class="flex-1">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2 hover:text-primary cursor-pointer"
-            @click="$emit('click', article)">
-          {{ article.title }}
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2 hover:text-primary cursor-pointer">
+          <RouterLink :to="articlePath(article)">{{ article.title }}</RouterLink>
         </h3>
         <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">
           {{ article.summary }}
@@ -30,6 +29,7 @@
 
 <script setup>
 import dayjs from 'dayjs'
+import { articlePath } from '@/utils/articleUrl'
 
 defineProps({
   article: {
@@ -38,7 +38,6 @@ defineProps({
   }
 })
 
-defineEmits(['click'])
 
 const formatDate = (date) => {
   return dayjs(date).format('YYYY-MM-DD')

@@ -294,6 +294,7 @@ onMounted(() => {
     title: '留言板',
     description: '欢迎留言交流，留下你的想法和建议。',
     type: 'website',
+    canonical: window.location.origin + '/messageboard',
   })
   checkMobile()
   window.addEventListener('resize', checkMobile)

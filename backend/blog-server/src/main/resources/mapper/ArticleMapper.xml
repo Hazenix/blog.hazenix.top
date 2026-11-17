@@ -160,6 +160,16 @@
         from article
         where status = 0 AND (recommend_level != 0 OR recommend_level IS NULL)
     </select>
+    <select id="isPublished" resultType="boolean">
+        select exists (
+            select 1 from article where status = #{status}
+            <choose>
+                <when test="id != null">and id = #{id}</when>
+                <otherwise>and slug = #{slug}</otherwise>
+            </choose>
+        )
+    </select>
+
     <select id="getPublishedSlugs" resultType="top.hazenix.vo.ArticleSlugVO">
         select id, slug, update_time from article where status = 0 order by update_time desc
     </select>

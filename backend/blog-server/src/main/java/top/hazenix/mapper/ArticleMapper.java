@@ -138,6 +138,8 @@ public interface ArticleMapper {
      */
     List<ArticleSlugVO> getPublishedSlugs();
 
+    boolean isPublished(@Param("id") Long id, @Param("slug") String slug, @Param("status") Integer status);
+
     /**
      * 手记匿名点赞：直接累加 like_count（无需登录）
      * @param id 文章ID

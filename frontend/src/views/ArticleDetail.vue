@@ -210,6 +210,7 @@
 </template>
 
 <script setup>
+import { articleIdentifier, articlePath } from '@/utils/articleUrl'
 import { ref, computed, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -374,8 +375,9 @@ const loadArticle = async () => {
     if (articleData && (articleData.id || articleData.title)) {
       article.value = articleData
       if (articleData.title) {
-        const currentUrl = window.location.href
         const origin = window.location.origin
+        const canonicalPath = String(articleData.id) === '1' ? '/messageboard' : articlePath(articleData)
+        const currentUrl = origin + canonicalPath
         const categoryName = getCategoryName(articleData)
         const tags = (articleData.tags || []).map(t => typeof t === 'object' ? t.name : t).filter(Boolean)
 
@@ -416,9 +418,10 @@ const loadArticle = async () => {
       
       // 如果文章有slug且当前URL使用的是ID，更新URL为slug
       // 标记正在更新URL，避免触发watch重新加载
-      if (article.value.slug && !isSlug.value && routeParam.value !== article.value.slug) {
+      const canonicalIdentifier = articleIdentifier(articleData)
+      if (route.name === 'ArticleDetail' && !isSlug.value && routeParam.value !== canonicalIdentifier) {
         isUpdatingUrl.value = true
-        router.replace({ name: 'ArticleDetail', params: { id: article.value.slug } }).then(() => {
+        router.replace({ name: 'ArticleDetail', params: { id: canonicalIdentifier } }).then(() => {
           // URL更新完成后，重置标志
           setTimeout(() => {
             isUpdatingUrl.value = false

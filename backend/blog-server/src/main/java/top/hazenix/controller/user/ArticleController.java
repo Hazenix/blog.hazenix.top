@@ -5,6 +5,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.bind.annotation.*;
 import top.hazenix.context.BaseContext;
 import top.hazenix.constant.ArticleConstants;
@@ -17,7 +20,11 @@ import top.hazenix.vo.ArticleDetailVO;
 import top.hazenix.vo.ArticleShortVO;
 import top.hazenix.vo.ArticleSlugVO;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @RestController("UserArticleController")
 @RequestMapping("/user/articles")
@@ -29,6 +36,8 @@ public class ArticleController {
     private final ArticleService articleService;
     private final PopularArticleService popularArticleService;
     private final RecommendService recommendService;
+
+    private static final long MESSAGE_BOARD_ARTICLE_ID = 1L;
 
     /**
      * 获取文章列表（用于用户端）
@@ -135,7 +144,7 @@ public class ArticleController {
      * 生成 XML Sitemap（用于搜索引擎提交）
      * 包含首页、分类页、标签页等固定页面 + 所有已发布文章
      */
-    @GetMapping(value = "/sitemap.xml", produces = "application/xml")
+    @GetMapping(value = "/sitemap.xml", produces = "application/xml;charset=UTF-8")
     public String getSitemapXml() {
         List<ArticleSlugVO> slugs = articleService.getPublishedArticleSlugs();
         StringBuilder sb = new StringBuilder();
@@ -156,8 +165,17 @@ public class ArticleController {
         sb.append(urlEntry(baseUrl + "/about", "monthly", "0.6"));
 
         // 文章页面
+        Set<String> articleUrls = new HashSet<>();
         for (ArticleSlugVO slug : slugs) {
-            String loc = baseUrl + "/article/" + (slug.getSlug() != null ? slug.getSlug() : slug.getId());
+            // 留言板使用独立页面，保留底层文章的旧链接兼容性。
+            if (slug.getId() == MESSAGE_BOARD_ARTICLE_ID) {
+                continue;
+            }
+            String identifier = isArticleSlug(slug.getSlug()) ? slug.getSlug() : slug.getId().toString();
+            String loc = baseUrl + "/article/" + UriUtils.encode(identifier, StandardCharsets.UTF_8);
+            if (!articleUrls.add(loc)) {
+                continue;
+            }
             String lastmod = slug.getUpdateTime() != null
                 ? slug.getUpdateTime().toLocalDate().toString()
                 : "";
@@ -166,6 +184,38 @@ public class ArticleController {
 
         sb.append("</urlset>");
         return sb.toString();
+    }
+
+    // Nginx 在提供文章页面前检查发布状态，避免继续返回已下架文章的静态快照。
+    @GetMapping("/page-status")
+    public ResponseEntity<Void> getArticlePageStatus(@RequestHeader("X-Article-URI") String requestUri) {
+        String identifier;
+        Long id = null;
+        try {
+            String prefix = "/article/";
+            String path = URI.create(requestUri).getRawPath();
+            if (path == null || !path.startsWith(prefix)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            identifier = UriUtils.decode(path.substring(prefix.length()), StandardCharsets.UTF_8);
+            if (identifier.matches("[0-9]+")) {
+                id = Long.valueOf(identifier);
+            } else if (!isArticleSlug(identifier)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } catch (IllegalArgumentException ignored) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return articleService.isPublished(id, identifier)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    private boolean isArticleSlug(String slug) {
+        return slug != null && !slug.isBlank() && !slug.matches("[0-9]+")
+                && !slug.equals(".") && !slug.equals("..")
+                && !slug.contains("/") && !slug.contains("\\") && slug.chars().noneMatch(Character::isISOControl);
     }
 
     private String urlEntry(String loc, String changefreq, String priority) {
@@ -196,7 +246,7 @@ public class ArticleController {
                "Disallow: /api/\n" +
                "Disallow: /profile\n" +
                "Disallow: /register\n" +
-               "Sitemap: https://blog.hazenix.top/api/user/articles/sitemap.xml\n";
+               "Sitemap: https://blog.hazenix.top/sitemap.xml\n";
     }
     //### 2.13 获取所有已发布文章的slug
     //- **URL**: `GET /user/articles/slugs`

@@ -101,8 +101,8 @@ public class ArticleController {
     @CacheEvict(cacheNames = {"articlesCache", "categoriesCache"}, allEntries = true)
     public Result addArticle(@Valid @RequestBody ArticleDTO articleDTO){
         log.info("新增文章：{}",articleDTO);
-        articleService.addArticle(articleDTO);
-        prerenderNotifyService.notifyContentChanged("article", null);
+        Long id = articleService.addArticle(articleDTO);
+        prerenderNotifyService.notifyContentChanged("article", id);
         return Result.success();
     }
 

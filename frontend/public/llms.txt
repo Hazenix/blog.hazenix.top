@@ -16,7 +16,7 @@ This blog is built with Vue 3 + Spring Boot + PostgreSQL, deployed on Alibaba Cl
 
 ## 数据资源 / Data Resources
 
-- [Sitemap (XML)](https://blog.hazenix.top/api/user/articles/sitemap.xml): 完整 URL 列表 / Full URL list for crawlers
+- [Sitemap (XML)](https://blog.hazenix.top/sitemap.xml): 完整 URL 列表 / Full URL list for crawlers
 - [robots.txt](https://blog.hazenix.top/robots.txt): 爬虫访问规则 / Crawler access rules
 - [文章列表 API / Article List API](https://blog.hazenix.top/api/user/articles): JSON 接口返回最新文章 / JSON endpoint returning recent articles
 - [文章 slug 列表 / Article slugs](https://blog.hazenix.top/api/user/articles/slugs): 全部文章 slug / All article slugs

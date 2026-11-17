@@ -16,8 +16,8 @@
  */
 
 import http from 'node:http'
-import { writeFile, mkdir } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
+import { articlePages, renderSnapshot } from './prerenderPage.js'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -26,7 +26,8 @@ const PORT = process.env.PORT || 3001
 const BASE_URL = process.env.PRERENDER_BASE_URL || 'https://blog.hazenix.top'
 const OUT_DIR = process.env.PRERENDER_OUT_DIR || join(__dirname, '..', 'dist')
 const PRERENDER_DIR = join(OUT_DIR, 'prerender')
-const API_BASE = BASE_URL + '/api'
+const API_BASE = new URL('/api', BASE_URL).href
+const PUBLIC_ORIGIN = new URL(process.env.PRERENDER_PUBLIC_URL || 'https://blog.hazenix.top').origin
 
 // ========== 浏览器单例 ==========
 
@@ -63,34 +64,8 @@ function getBrowser() {
   return browserPromise
 }
 
-// ========== HTML 清理 ==========
-
-function cleanHTML(html) {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<script\b[^>]*\/>/gi, '')
-    .replace(/<link\s+rel="modulepreload"[^>]*>/gi, '')
-}
-
-// ========== 渲染 ==========
-
-async function renderPage(browser, path, file) {
-  const page = await browser.newPage()
-  try {
-    const url = BASE_URL + path
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 })
-    await page.waitForSelector('#app', { timeout: 5000 }).catch(() => {})
-
-    let html = await page.content()
-    html = cleanHTML(html)
-
-    const outPath = join(PRERENDER_DIR, file)
-    await mkdir(dirname(outPath), { recursive: true })
-    await writeFile(outPath, html)
-    return { path, ok: true }
-  } finally {
-    await page.close()
-  }
+async function renderPage(browser, path) {
+  await renderSnapshot(browser, BASE_URL, PRERENDER_DIR, path, PUBLIC_ORIGIN)
 }
 
 // ========== 受影响的页面计算 ==========
@@ -98,27 +73,25 @@ async function renderPage(browser, path, file) {
 async function getAffectedPaths(type, id) {
   const paths = []
 
-  // 首页总是受影响（文章列表、热门文章变化）
-  paths.push({ path: '/', file: 'index.html' })
-  paths.push({ path: '/home', file: 'home.html' })
-  paths.push({ path: '/articles', file: 'articles.html' })
+  // 文章列表和首页都会展示最近的内容。
+  paths.push('/home', '/articles')
 
   if (type === 'article') {
     try {
       const res = await fetch(`${API_BASE}/user/articles/${id}`)
+      if (!res.ok) return paths
       const json = await res.json()
       const article = json.data || json
-      if (article) {
-        const identifier = article.slug || String(article.id)
-        paths.push({ path: `/article/${identifier}`, file: `article/${identifier}.html` })
+      if (article.id) {
+        paths.push(...articlePages([article]))
         if (article.categoryId || article.category?.id) {
           const cid = article.categoryId || article.category?.id
-          paths.push({ path: `/category/${cid}`, file: `category/${cid}.html` })
+          paths.push(`/category/${cid}`)
         }
         if (article.tags) {
           for (const tag of article.tags) {
             const tid = typeof tag === 'object' ? tag.id : tag
-            if (tid) paths.push({ path: `/tag/${tid}`, file: `tag/${tid}.html` })
+            if (tid) paths.push(`/tag/${tid}`)
           }
         }
       }
@@ -126,11 +99,11 @@ async function getAffectedPaths(type, id) {
       console.error(`获取文章 ${id} 失败:`, e.message)
     }
   } else if (type === 'category') {
-    paths.push({ path: `/category/${id}`, file: `category/${id}.html` })
-    paths.push({ path: '/categories', file: 'categories.html' })
+    paths.push(`/category/${id}`)
+    paths.push('/categories')
   } else if (type === 'tag') {
-    paths.push({ path: `/tag/${id}`, file: `tag/${id}.html` })
-    paths.push({ path: '/tags', file: 'tags.html' })
+    paths.push(`/tag/${id}`)
+    paths.push('/tags')
   }
 
   return paths
@@ -139,17 +112,16 @@ async function getAffectedPaths(type, id) {
 // ========== HTTP 服务器 ==========
 
 const STATIC_PAGES = [
-  { path: '/', file: 'index.html' },
-  { path: '/home', file: 'home.html' },
-  { path: '/articles', file: 'articles.html' },
-  { path: '/categories', file: 'categories.html' },
-  { path: '/tags', file: 'tags.html' },
-  { path: '/friend-links', file: 'friend-links.html' },
-  { path: '/tree-hole', file: 'tree-hole.html' },
-  { path: '/messageboard', file: 'messageboard.html' },
-  { path: '/about', file: 'about.html' },
-  { path: '/about-project', file: 'about-project.html' },
-  { path: '/history', file: 'history.html' },
+  '/home',
+  '/articles',
+  '/categories',
+  '/tags',
+  '/friend-links',
+  '/tree-hole',
+  '/messageboard',
+  '/about',
+  '/about-project',
+  '/history',
 ]
 
 async function collectAllPages() {
@@ -158,22 +130,19 @@ async function collectAllPages() {
     const res = await fetch(`${API_BASE}/user/articles/slugs`)
     const data = await res.json()
     const slugs = data.data || data || []
-    for (const { slug, id } of slugs) {
-      const identifier = slug || String(id)
-      pages.push({ path: `/article/${identifier}`, file: `article/${identifier}.html` })
-    }
+    pages.push(...articlePages(slugs))
   } catch (e) { console.error('获取 slugs 失败:', e.message) }
   try {
     const res = await fetch(`${API_BASE}/user/categories`)
     const data = await res.json()
     const cats = data.data || data || []
-    for (const { id } of cats) pages.push({ path: `/category/${id}`, file: `category/${id}.html` })
+    for (const { id } of cats) pages.push(`/category/${id}`)
   } catch (e) { console.error('获取 categories 失败:', e.message) }
   try {
     const res = await fetch(`${API_BASE}/user/tags`)
     const data = await res.json()
     const tags = data.data || data || []
-    for (const { id } of tags) pages.push({ path: `/tag/${id}`, file: `tag/${id}.html` })
+    for (const { id } of tags) pages.push(`/tag/${id}`)
   } catch (e) { console.error('获取 tags 失败:', e.message) }
   return pages
 }
@@ -196,16 +165,20 @@ async function handleRequest(req, res) {
   }
 
   const startTime = Date.now()
-  const browser = await getBrowser()
-
   try {
+    const browser = await getBrowser()
     if (url.pathname === '/render-all') {
       console.log('[prerender-server] 全量渲染开始...')
       const pages = await collectAllPages()
       let ok = 0, fail = 0
-      for (const p of pages) {
-        const result = await renderPage(browser, p.path, p.file)
-        if (result.ok) ok++; else fail++
+      for (const path of pages) {
+        try {
+          await renderPage(browser, path)
+          ok++
+        } catch (error) {
+          fail++
+          console.warn(`[prerender-server] ${path}: ${error.message}`)
+        }
       }
       const elapsed = Date.now() - startTime
       console.log(`[prerender-server] 全量完成: ${ok} 成功, ${fail} 失败 (${elapsed}ms)`)
@@ -220,17 +193,10 @@ async function handleRequest(req, res) {
         return
       }
       console.log(`[prerender-server] 渲染: ${path}`)
-      const file = path === '/' ? 'index.html' : path.replace(/^\//, '') + '.html'
-      const result = await renderPage(browser, path, file)
+      await renderPage(browser, path)
       const elapsed = Date.now() - startTime
-      if (result.ok) {
-        console.log(`[prerender-server] 完成: ${path} (${elapsed}ms)`)
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ ok: true, elapsed }))
-      } else {
-        res.writeHead(500)
-        res.end('Render failed')
-      }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true, elapsed }))
 
     } else if (url.pathname === '/render-affected') {
       const type = url.searchParams.get('type')
@@ -243,9 +209,14 @@ async function handleRequest(req, res) {
       console.log(`[prerender-server] 增量渲染: ${type}/${id}`)
       const pages = await getAffectedPaths(type, id)
       let ok = 0, fail = 0
-      for (const p of pages) {
-        const result = await renderPage(browser, p.path, p.file)
-        if (result.ok) ok++; else fail++
+      for (const path of pages) {
+        try {
+          await renderPage(browser, path)
+          ok++
+        } catch (error) {
+          fail++
+          console.warn(`[prerender-server] ${path}: ${error.message}`)
+        }
       }
       const elapsed = Date.now() - startTime
       console.log(`[prerender-server] 增量完成: ${ok} 成功, ${fail} 失败 (${elapsed}ms)`)

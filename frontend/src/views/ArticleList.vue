@@ -33,7 +33,9 @@
             <!-- 文章内容 -->
             <div class="article-content">
               <!-- 文章标题 -->
-              <h2 class="article-title">{{ article.title }}</h2>
+              <h2 class="article-title">
+                <RouterLink :to="articlePath(article)" @click.stop>{{ article.title }}</RouterLink>
+              </h2>
 
               <!-- 文章摘要 -->
               <p class="article-summary">
@@ -98,6 +100,7 @@
 </template>
 
 <script setup>
+import { articlePath } from '@/utils/articleUrl'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -327,15 +330,7 @@ const handleCurrentChange = (page) => {
 
 // 跳转到文章详情（优先使用slug）
 const goToArticle = (article) => {
-  // 如果传入的是对象，优先使用slug
-  if (typeof article === 'object' && article !== null) {
-    const identifier = article.slug || article.id
-    // 使用路由名称跳转，更可靠
-    router.push({ name: 'ArticleDetail', params: { id: identifier } })
-  } else {
-    // 如果传入的是ID，直接使用
-    router.push({ name: 'ArticleDetail', params: { id: article } })
-  }
+  router.push(articlePath(article))
 }
 
 // 获取标签名称（兼容新的API格式）

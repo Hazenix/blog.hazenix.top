@@ -98,7 +98,9 @@ cd frontend
 npm run build
 ```
 
-注意：`npm run build` 会触发 `postbuild` 的预渲染脚本。预渲染依赖浏览器环境和线上接口可访问性；若只验证前端编译，使用 `npx vite build` 更稳定。
+构建时使用 `PRERENDER_BASE_URL` 指定只读内容 API 的站点地址，默认使用线上博客。脚本通过本机预览服务渲染本次构建的产物，前端 API 地址使用相对路径 `/api`。如果只验证前端编译，可运行 `npx vite build`。
+
+参照 `docs/nginx-blog.conf` 将 `/sitemap.xml` 代理到后端，启用文章发布状态检查和预渲染路由。配置中的后端地址需与实际部署一致，Nginx 需要 `http_auth_request_module`。先部署包含状态接口的后端，再启用 Nginx 规则。增量渲染服务使用正常浏览器路由获取页面，新发布文章通过 `prerender.server-url` 配置的服务生成快照。
 
 前端产物位置：
 
@@ -167,6 +169,12 @@ ssh blog-prod 'rsync -a --delete /tmp/blog-dist/ <deploy-root>/nginx/html/blog/'
 ```
 
 如果服务器没有 `rsync`，可以改用 `cp -a`，但要谨慎处理旧 hash 资源文件，避免旧资源残留或新资源缺失。
+
+### 5.4 生产版本包含仓库之外的改动
+
+2026-11-17 的 SEO 发布使用正在运行的镜像作为基底，只在原 jar 增加 `ArticleSeoOverlayController`，并为博客的 Nginx 虚拟主机新增站点地图和爬虫路由。生产镜像内包含启动所需的 `/config/application-prod.yml`；仅用本仓库的 jar 和当前 Dockerfile 重建会因缺少该路径无法启动。
+
+爬虫可读取预渲染 HTML。新文章或更新时间与快照不匹配时，后端按当前公开状态提供正文。SEO 路由验证应覆盖 `/sitemap.xml`、旧站点地图、中文与数字文章地址、真实 `404` 和原 Vue 入口。回滚时恢复该次发布保存的旧镜像、jar 和 Nginx 配置。
 
 ## 6. 重建与重启服务
 

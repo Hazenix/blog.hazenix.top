@@ -184,7 +184,7 @@ public class ArticleServiceImpl implements ArticleService {
      */
     @Override
     @Transactional
-    public void addArticle(ArticleDTO articleDTO) {
+    public Long addArticle(ArticleDTO articleDTO) {
         if(articleDTO.getContent()==null && StringUtils.isEmpty(articleDTO.getTitle())){
             throw new BussinessException(ErrorCode.A02002, MessageConstant.ARTICLLE_CONTENT_IS_NULL);
         }else{
@@ -243,8 +243,12 @@ public class ArticleServiceImpl implements ArticleService {
             }
             articleTagsMapper.insertBatch(list);
         }
+        return id;
+    }
 
-
+    @Override
+    public boolean isPublished(Long id, String slug) {
+        return articleMapper.isPublished(id, slug, ArticleConstants.STATUS_NORMAL);
     }
 
     /**

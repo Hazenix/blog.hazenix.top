@@ -16,7 +16,9 @@ public interface ArticleService {
 
     ArticleDetailVO getArticleDetail(Long id);
 
-    void addArticle(ArticleDTO articleDTO);
+    Long addArticle(ArticleDTO articleDTO);
+
+    boolean isPublished(Long id, String slug);
 
     void updateArticle(Long id, ArticleDTO articleDTO);
 
