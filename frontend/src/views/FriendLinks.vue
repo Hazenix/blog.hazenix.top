@@ -66,38 +66,30 @@
                   >
                     微信：
                   </strong>
-                  <span 
+                  <a
+                    :href="weChatQRCode"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     class="text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
                     @mouseenter="showWeChatQR = true"
                     @mouseleave="showWeChatQR = false"
                   >
                     扫码添加
-                  </span>
+                  </a>
                   <!-- 微信二维码悬停显示 -->
                   <transition name="fade">
                     <div 
                       v-if="showWeChatQR"
-                      class="absolute left-0 top-full mt-2 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700"
-                      style="min-width: 220px; transform: translateX(-50%); left: 50%;"
-                      @mouseenter="showWeChatQR = true"
-                      @mouseleave="showWeChatQR = false"
+                      class="pointer-events-none absolute left-0 top-1/2 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700"
+                      style="min-width: 220px; transform: translateY(-50%);"
                     >
                       <div class="text-center">
                         <img 
                           :src="weChatQRCode" 
                           alt="微信二维码" 
-                          class="w-48 h-48 mx-auto mb-2 rounded object-contain"
+                          class="w-64 max-w-[70vw] h-auto mx-auto rounded object-contain"
                           @error="handleQRCodeError"
                         />
-                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                          在本站扫码加我的，请加上
-                        </p>
-                        <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                          "[blog]"
-                        </p>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">
-                          前缀，感谢配合
-                        </p>
                       </div>
                     </div>
                   </transition>
@@ -172,7 +164,7 @@ import { Link, Plus, DataAnalysis, Guide, House, Document, InfoFilled } from '@e
 import FriendLinks from '@/components/common/FriendLinks.vue'
 import LinkApplyDialog from '@/components/common/LinkApplyDialog.vue'
 import { frontendApi } from '@/api/frontend'
-import weChatQRCodeImage from '@/assets/img/Hazenix.webp'
+import weChatQRCodeImage from '@/assets/img/wechat-qr.jpg'
 import { setSEO } from '@/utils/seo'
 
 // 响应式数据
@@ -234,18 +226,16 @@ onMounted(() => {
 /* 微信二维码悬停动画 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-10px);
 }
 
 .fade-enter-to,
 .fade-leave-from {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 </style>

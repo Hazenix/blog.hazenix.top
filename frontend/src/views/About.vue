@@ -55,7 +55,10 @@
             <li>GitHub：<a href="https://github.com/HazeHacker" target="_blank">Hazenix</a></li>
             <li>
               微信：
-              <span 
+              <a
+                :href="weChatQRCode"
+                target="_blank"
+                rel="noopener noreferrer"
                 class="relative inline-block text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
                 @mouseenter="showWeChatQR = true"
                 @mouseleave="showWeChatQR = false"
@@ -65,8 +68,8 @@
                 <transition name="fade">
                   <div 
                     v-if="showWeChatQR"
-                    class="absolute left-1/2 bottom-full mb-2 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700"
-                    style="min-width: 220px; transform: translateX(-50%);"
+                    class="absolute left-1/2 top-1/2 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 border border-gray-200 dark:border-gray-700"
+                    style="min-width: 220px; transform: translate(-50%, -50%);"
                     @mouseenter="showWeChatQR = true"
                     @mouseleave="showWeChatQR = false"
                   >
@@ -74,22 +77,13 @@
                       <img 
                         :src="weChatQRCode" 
                         alt="微信二维码" 
-                        class="w-48 h-48 mx-auto mb-2 rounded object-contain"
+                        class="w-64 max-w-[70vw] h-auto mx-auto rounded object-contain"
                         @error="handleQRCodeError"
                       />
-                      <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                        在本站扫码加我的，请加上
-                      </p>
-                      <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                        "[blog]"
-                      </p>
-                      <p class="text-xs text-gray-600 dark:text-gray-400">
-                        前缀，感谢配合
-                      </p>
                     </div>
                   </div>
                 </transition>
-              </span>
+              </a>
             </li>
           </ul>
         </div>
@@ -101,7 +95,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { InfoFilled } from '@element-plus/icons-vue'
-import weChatQRCodeImage from '@/assets/img/Hazenix.webp'
+import weChatQRCodeImage from '@/assets/img/wechat-qr.jpg'
 import { setSEO } from '@/utils/seo'
 
 onMounted(() => {
@@ -134,18 +128,16 @@ const handleQRCodeError = (e) => {
 /* 微信二维码悬停动画 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(10px);
 }
 
 .fade-enter-to,
 .fade-leave-from {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 </style>
